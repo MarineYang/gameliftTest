@@ -9,8 +9,9 @@ const router: Router = Router();
 import AWS = require("aws-sdk");
 import GameLiftSDK = require("aws-sdk/clients/gamelift");
 
+let RoomNumber = 1;
 let arrGameSession: any[] = [];
-
+let arrTempGameSession: Array<any> = [];
 const AWSGameLiftCfg: AWS.GameLift.Types.ClientConfiguration = {
     accessKeyId:process.env.ACCESSKEYID,
     secretAccessKey:process.env.SECRETACCESSKEY,
@@ -49,38 +50,51 @@ router.post("/create", function(req: Request, rsp: Response) {
             {
                 Key: "serverip",
                 Value: process.env.SERVERIP
+            },
+            {
+                Key: "roomNumber",
+                Value: RoomNumber.toString()
             }
         ],
 
+        GameSessionData: RoomNumber.toString(),
         Name: JSON.stringify(req.body.subject)
     };
     params.FleetId = process.env.FLEETID;
 
 
     gameLift.createGameSession(params, function(err: AWS.AWSError, data: AWS.GameLift.CreateGameSessionOutput) {
+        let errcode = -1; //-1 => Error
+        let sucesscode = 1;
         if (err)
         {
-            //-1 => Error
-            console.log("GameLog", "createGameSession Error : WRONG_PARAMETER : " + JSON.stringify(req.body));
-            UTILS.sendResult(rsp, -1, err.code);
+            console.log("GameLog", "createGameSession Error Err Code : " + errcode + " : WRONG_PARAMETER : " + JSON.stringify(req.body));
+            UTILS.sendResult(rsp, errcode, err.code);
         }
         else
         {
             if (data.GameSession.Status != "ACTIVE" && data.GameSession.Status != "ACTIVATING") {
-                UTILS.sendResult(rsp, -1, data.GameSession.Status);
+                UTILS.sendResult(rsp, errcode, data.GameSession.Status);
                 UTILS.SetLogToFile("GameLog", "Room create Error createGameSession ACTIVE OR ACTIVATING : " + data.GameSession.Status);
             }
             //send 하기 전에 room index 생성 ?
             //11 => Worn
             //1 => success
+            
             send(rsp,
                 {
-                    "result" : 1,
+                    "result" : sucesscode,
                     "GameSessionId":data.GameSession.GameSessionId,
                     "Subject" : req.body.subject,
                     "MaxPlayer" : EnterUserMax
                 }
             );
+            RoomNumber++;
+            UTILS.SetLogToFile("GameLog", 
+            "Room create success : RoomNumber : " + RoomNumber + 
+            ", GameSessioId : " + JSON.stringify(data.GameSession.GameSessionId) + 
+            ", GameSessionName : " + JSON.stringify(data.GameSession.Name) + 
+            ", MaxPlayerCount : " + JSON.stringify(data.GameSession.MaximumPlayerSessionCount));
         }
     });
 });
