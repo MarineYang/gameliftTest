@@ -1,0 +1,6 @@
+- 함수 예시.
+https://docs.aws.amazon.com/gamelift/latest/developerguide/integration-server-sdk-cpp-ref-actions.html 
+
+
+- 아마존 데디서버 시퀀스 다이어그램.
+https://docs.aws.amazon.com/ko_kr/gamelift/latest/developerguide/gamelift-sdk-server-api-interaction-vsd.html 
