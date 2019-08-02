@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # TypeScript Node Starter
 
 [![Dependency Status](https://david-dm.org/Microsoft/TypeScript-Node-Starter.svg)](https://david-dm.org/Microsoft/TypeScript-Node-Starter) [![Build Status](https://travis-ci.org/Microsoft/TypeScript-Node-Starter.svg?branch=master)](https://travis-ci.org/Microsoft/TypeScript-Node-Starter)
@@ -550,3 +551,6 @@ A majority of this quick start's content was inspired or adapted from Sahat's ex
 ## License
 Copyright (c) Microsoft Corporation. All rights reserved.
 Licensed under the [MIT](LICENSE.txt) License.
+=======
+# gameliftTest
+>>>>>>> fec6c08d46ea657012d250cb25a894d218e7bfd4
