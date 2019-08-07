@@ -7,7 +7,7 @@ import * as packet from "./util/packet";
 const app = express();
 console.log("RunTest app \n");
 
-app.set("port", process.env.PORT || process.env.CONFIG_LISTEN_PORT);
+app.set("port", 9080);
 
 app.use(compression()); //압축
 app.use(bodyParser.json());
