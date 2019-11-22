@@ -2,147 +2,130 @@ import { Router, Request, Response } from "express";
 import * as UTILS from "../util/utils";
 import {send} from "../util/packet";
 
-let localIP = "127.0.0.1";
+//let localIP = "127.0.0.1";
 
 const router: Router = Router();
 
 import AWS = require("aws-sdk");
 import GameLiftSDK = require("aws-sdk/clients/gamelift");
+import { ERROR_TYPE } from "../util/ResultType";
+let roomcreated = 0;
+let gamesessionBak = "";
 
-let RoomNumber = 1;
-let arrGameSession: any[] = [];
-let arrTempGameSession: Array<any> = [];
 const AWSGameLiftCfg: AWS.GameLift.Types.ClientConfiguration = {
-    accessKeyId:process.env.ACCESSKEYID,
-    secretAccessKey:process.env.SECRETACCESSKEY,
-    region:process.env.REGION,
-    endpoint: process.env.AWSENDPOINT
+    accessKeyId:"AKIAJU3CYKVZYOYFBMQA",
+    secretAccessKey:"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",
+    region:"ap-northeast-1",
+    endpoint: "http://localhost:9080"
 };
-
+console.log("GameLog", "AWSGameLiftCfg : " + JSON.stringify(AWSGameLiftCfg));
 const gameLift = new GameLiftSDK(AWSGameLiftCfg);
 
-router.post("/create", function(req: Request, rsp: Response) {
-    if ( !UTILS.isNumber(req.body.usersn) || !UTILS.isString(req.body.gamesessionid) )
-    {
-        //11 => Worn
-        //1 => success
+console.log("Connected Route....")
 
-        UTILS.sendResult(rsp, 11);
-        console.log("GameLog", "Create Error : WRONG_PARAMETER : " + JSON.stringify(req.body));
-        //UTILS.SetLogToFile("GameLog", "Create Error : WRONG_PARAMETER : " + JSON.stringify(req.body));
+router.post("/create", function(req: Request, rsp: Response) {
+
+    console.log("GameLog", "Create Init ! ");
+
+    const params: GameLiftSDK.CreateGameSessionInput = {
+        GameProperties: [
+            {
+                Key: "serverip",
+                Value: "127.0.0.1:8080"
+            }
+        ],
+        MaximumPlayerSessionCount: 100, /* required */
+    };
+    params.FleetId = "fleet-1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d";
+    //params.AliasId = "alias-f31ee654-2614-4fc9-b258-c04da0114ea0";
+
+    if(roomcreated)
+    {
+        send(rsp,
+            {
+                "result" : ERROR_TYPE.SUCCESS,
+                "GameSessionId":gamesessionBak,
+            }
+        );
+
         return;
     }
 
-    let EnterUserMax = 5;
-    const params: GameLiftSDK.CreateGameSessionInput = {
-        MaximumPlayerSessionCount: req.body.usermax, /* required */
-        CreatorId: req.body.usersn.toString(),
-  
-        GameProperties: [
-            {
-                Key: "mode", /* required */
-                Value: req.body.gamemode /* required */
-            },
-            {
-                Key: "usermax",
-                Value: EnterUserMax.toString()
-            },
-            {
-                Key: "serverip",
-                Value: process.env.SERVERIP
-            },
-            {
-                Key: "roomNumber",
-                Value: RoomNumber.toString()
-            }
-        ],
-
-        GameSessionData: RoomNumber.toString(),
-        Name: JSON.stringify(req.body.subject)
-    };
-    params.FleetId = process.env.FLEETID;
-
-
     gameLift.createGameSession(params, function(err: AWS.AWSError, data: AWS.GameLift.CreateGameSessionOutput) {
-        let errcode = -1; //-1 => Error
-        let sucesscode = 1;
+        
         if (err)
         {
-            console.log("GameLog", "createGameSession Error Err Code : " + errcode + " : WRONG_PARAMETER : " + JSON.stringify(req.body));
-            UTILS.sendResult(rsp, errcode, err.code);
+            if(err.code == 'FleetCapacityExceededException')
+		  {
+            console.log("GameLog", "createGameSession Error Err Code : " + err.code + " : WRONG_PARAMETER : " + JSON.stringify(req.body));
+              UTILS.sendResult(rsp, ERROR_TYPE.GAMELIFT_NO_AVAILABLE_PROCESS, err.code);
+          }
         }
         else
         {
             if (data.GameSession.Status != "ACTIVE" && data.GameSession.Status != "ACTIVATING") {
-                UTILS.sendResult(rsp, errcode, data.GameSession.Status);
-                UTILS.SetLogToFile("GameLog", "Room create Error createGameSession ACTIVE OR ACTIVATING : " + data.GameSession.Status);
+                UTILS.sendResult(rsp, ERROR_TYPE.GAMELIFT_ETC_ERROR, data.GameSession.Status);
+                console.log("GameLog", "Room create Error createGameSession ACTIVE OR ACTIVATING : " + data.GameSession.Status);
             }
-            //send 하기 전에 room index 생성 ?
-            //11 => Worn
-            //1 => success
-            
+            console.log("GameLog", "Room create success : GameSessioId : " + JSON.stringify(data.GameSession.GameSessionId));
+            roomcreated = 1;
+            gamesessionBak = data.GameSession.GameSessionId;
+
             send(rsp,
                 {
-                    "result" : sucesscode,
+                    "result" : ERROR_TYPE.SUCCESS,
                     "GameSessionId":data.GameSession.GameSessionId,
-                    "Subject" : req.body.subject,
-                    "MaxPlayer" : EnterUserMax
                 }
             );
-            RoomNumber++;
-            UTILS.SetLogToFile("GameLog", 
-            "Room create success : RoomNumber : " + RoomNumber + 
-            ", GameSessioId : " + JSON.stringify(data.GameSession.GameSessionId) + 
-            ", GameSessionName : " + JSON.stringify(data.GameSession.Name) + 
-            ", MaxPlayerCount : " + JSON.stringify(data.GameSession.MaximumPlayerSessionCount));
+           return;
         }
+        
     });
+
 });
+let PlayerIdx = 0;
+
 
 router.post("/join", function(req: Request, rsp: Response) {
-    if ( !UTILS.isNumber(req.body.usersn) || !UTILS.isString(req.body.gamesessionid) )
+    console.log("GameLog", "join Init ! ");
+    if ( !UTILS.isString(req.body.gamesessionid) )
     {
-        //11 => Worn
-        //1 => success
 
-        UTILS.sendResult(rsp, 11);
+        UTILS.sendResult(rsp, ERROR_TYPE.WRONG_PARAMETER);
         console.log("GameLog", "join Error : WRONG_PARAMETER : " + JSON.stringify(req.body));
         return;
     }
+    PlayerIdx++;
     const params: AWS.GameLift.CreatePlayerSessionInput = {
         GameSessionId: req.body.gamesessionid, /* required */
-        PlayerId: req.body.userid, /* required */
+        PlayerId: PlayerIdx.toString(), /* required */
     };
     let ipAddress: string|undefined = "";
     gameLift.createPlayerSession(params, function(err: AWS.AWSError, data: AWS.GameLift.CreatePlayerSessionOutput) {
+        const outputResult: AWS.GameLift.PlayerSession = <AWS.GameLift.PlayerSession>data.PlayerSession;
         if (err)
         {
-            //let return_value = 0;
             console.log(err, err.stack); // an error occurred
             console.log("GameLog", "Room join Error : createPlayerSession - " + JSON.stringify(err.code));
+            
             send(rsp,
                 {
-                    "result" : -1,
+                    "result" : ERROR_TYPE.FAIL,
+                    "GameSessionId" : params.GameSessionId,
                     "errMsg" : err.code
                 });
         } else {
-
-            const outputResult: any = data.PlayerSession;
             console.log("AWS.GameLift.PlayerSession : " + outputResult);
-
-            ipAddress = outputResult.IpAddress+":"+outputResult.Port;
-            let game: any = arrGameSession.find(x=>x.GameSessionID==req.body.gamesessionid);
+            
+            ipAddress = "172.20.30.195" + ":"+outputResult.Port;
+            console.log("======GameSessionId : " + params.GameSessionId);
+            console.log("======PlayerSessionId : " + params.PlayerId);
             send( rsp,
                 {
-                    "result" : 1,
+                    "result" : ERROR_TYPE.SUCCESS,
                     "IpAddress" : ipAddress,
                     "PlayerSessionID" : outputResult.PlayerSessionId,
-                    "No" : game.No,
-                    "GameSessionId": game.GameSessionID,
-                    "Subject" : game.subject,
-                    "Usercount" : game.Usercount,
-                    "Usermax" : game.Usermax,
-                    "EnterState" : game.EnterState,
+                    "GameSessionId": params.GameSessionId,
                 });
         }
     });

@@ -1,5 +1,4 @@
 import app from "./app";
-console.log("RunTest server1 \n");
 
 function GameLiftServerStart() {
     console.log("RunTest Start 1\n");
@@ -13,11 +12,11 @@ function GameLiftServerStart() {
     console.log("Press CTRL-C to stop\n");
 }
 function ConnectLog() {
-    console.log("Connect Complete");
-    setTimeout(ConnectLog, 1500);
+    console.log("Server Running . . .");
+    setTimeout(ConnectLog, 10000);
 }
-console.log("RunTest Start 2\n");
-setTimeout(ConnectLog, 1500);
+//console.log("Server Running . . .");
+//setTimeout(ConnectLog, 1500);
 
 GameLiftServerStart();
 

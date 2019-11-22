@@ -6,8 +6,9 @@ import * as packet from "./util/packet";
 
 const app = express();
 console.log("RunTest app \n");
-
-app.set("port", 9080);
+//SERVERIP=http://localhost:3001
+//CONFIG_LISTEN_PORT=3001
+app.set("port", 8080);
 
 app.use(compression()); //압축
 app.use(bodyParser.json());
